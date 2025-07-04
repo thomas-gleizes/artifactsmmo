@@ -33,6 +33,18 @@ export class Character {
           params: { path: { name: this.character } },
         })
         .then((resp) => resp.data!.data);
+
+      const cooldown =
+        new Date(this.info!.cooldown_expiration!).getTime() -
+        new Date().getTime();
+
+      if (cooldown > 0) {
+        console.log(
+          this.character + " WAIT CURRENT COOLDOWN : ",
+          `${Math.round(cooldown / 1000)} sec`,
+        );
+        await new Promise((r) => setTimeout(r, cooldown));
+      }
     }
 
     return this.info!;
@@ -51,13 +63,7 @@ export class Character {
     data: T,
     action: string = "COOLDOWN",
   ) {
-    this.logger(action, `START : ${data.cooldown.remaining_seconds} sec`);
-
-    await new Promise((r) =>
-      setTimeout(r, data.cooldown.remaining_seconds * 1000),
-    );
-
-    this.logger(action, `FINISH : ${data.cooldown.remaining_seconds} sec`);
+    this.logger(action, `${data.cooldown.remaining_seconds} sec`);
   }
 
   public async move([x, y]: Coordinates | PointOfInterestValues) {
@@ -116,7 +122,7 @@ export class Character {
     await this.wait(
       data,
       `GATHERING (${data.details.xp}xp): ${data.details.items.map(
-        (item) => `${item.code} ${item.quantity}`,
+        (item) => `${item.code} x${item.quantity}`,
       )}`,
     );
   }

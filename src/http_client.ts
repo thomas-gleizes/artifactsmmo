@@ -19,11 +19,24 @@ export const http_client = createClient<paths>({
 });
 
 http_client.use({
-  onResponse: ({ response }) => {
+  onResponse: async ({ request, response }) => {
     if (!response.ok) {
-      // @ts-ignore
-      console.log(response.status, ErrorCodes[response.status]);
+      console.log(
+        request.url.toString(),
+        response.status,
+        // @ts-ignore
+        ErrorCodes[response.status],
+      );
       throw new Http_Error(response);
+    }
+
+    const conned = response.clone();
+    const payload = await conned.json();
+
+    if (payload.data?.cooldown?.remaining_seconds) {
+      await new Promise((r) =>
+        setTimeout(r, payload.data?.cooldown?.remaining_seconds * 1000),
+      );
     }
 
     return response;

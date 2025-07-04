@@ -17,4 +17,4 @@ async function main() {
   ]);
 }
 
-main().catch(() => console.log("error"));
+main().catch((err) => console.log("error", err));
