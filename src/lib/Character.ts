@@ -137,7 +137,7 @@ export class Character {
     this.set_info(data);
     await this.wait(
       data,
-      `GATHERING (${data.details.xp}xp): ${data.details.items.map(
+      `GATHERING (${data.details.xp}xp) ${data.details.items.map(
         (item) => `${item.code} x${item.quantity}`,
       )}`,
     );
