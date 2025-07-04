@@ -1,6 +1,6 @@
 import { components } from "./openapi";
 
-export const POINT_OF_INTEREST = {
+export const POINT_OF_INTEREST_COORDINATES = {
   resource: {
     salmon_fishing_spot: [-3, -4],
     gold_rocks: [6, -3],

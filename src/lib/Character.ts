@@ -1,7 +1,7 @@
 import { components } from "../openapi";
 import { http_client } from "../http_client";
-import { Coordinates, PointOfInterestValues } from "../types";
-import { POINT_OF_INTEREST } from "../constants";
+import { Coordinates } from "../types";
+import { Maps, MONSTER, POINT_OF_INTEREST, WOODS } from "./Maps";
 
 export enum Characters {
   KALAT = "Kalat",
@@ -14,7 +14,10 @@ export enum Characters {
 export class Character {
   private info: components["schemas"]["CharacterSchema"] | undefined;
 
-  constructor(private readonly character: Characters) {}
+  constructor(
+    private readonly character: Characters,
+    private readonly map: Maps,
+  ) {}
 
   public logger(...args: any[]) {
     console.log(this.character, ...args);
@@ -24,6 +27,10 @@ export class Character {
     payload: T,
   ) {
     this.info = payload.character;
+  }
+
+  public async get_position(): Promise<Coordinates> {
+    return this.get_info().then((info) => [info.x, info.y]);
   }
 
   async get_info(): Promise<components["schemas"]["CharacterSchema"]> {
@@ -66,7 +73,16 @@ export class Character {
     this.logger(action, `${data.cooldown.remaining_seconds} sec`);
   }
 
-  public async move([x, y]: Coordinates | PointOfInterestValues) {
+  public async got_to(point_of_interest: POINT_OF_INTEREST) {
+    const destination_coordinates = await this.map.find_nearest(
+      await this.get_position(),
+      point_of_interest,
+    );
+
+    await this.move(destination_coordinates);
+  }
+
+  public async move([x, y]: Coordinates) {
     const info = await this.get_info();
 
     if (info.x === x && info.y === y) {
@@ -145,6 +161,36 @@ export class Character {
     );
   }
 
+  public async delete_item(item_code: string, quantity: number = 1) {
+    const data = await http_client
+      .POST("/my/{name}/action/delete", {
+        params: { path: { name: this.character } },
+        body: {
+          code: item_code,
+          quantity: quantity,
+        },
+      })
+      .then((resp) => resp.data!.data);
+
+    this.set_info(data);
+    await this.wait(data, `DELETE ${item_code} x${quantity}`);
+  }
+
+  public async rececycling(item_code: string, quantity: number = 1) {
+    const data = await http_client
+      .POST("/my/{name}/action/recycling", {
+        params: { path: { name: this.character } },
+        body: {
+          code: item_code,
+          quantity: quantity,
+        },
+      })
+      .then((resp) => resp.data!.data);
+
+    this.set_info(data);
+    await this.wait(data, `RECYCLING ${item_code} x${quantity}`);
+  }
+
   public async inventory(itemCode: string): Promise<number> {
     const inventory = await this.get_info().then((info) => info.inventory);
 
@@ -188,7 +234,7 @@ export class Character {
     this.logger(`INVENTORY ${total_items}/${info.inventory_max_items}`);
 
     if (marge > info.inventory_max_items - total_items) {
-      await this.move(POINT_OF_INTEREST.bank.bank);
+      await this.got_to(POINT_OF_INTEREST.BANK);
       await this.store_all();
       await this.move(pose);
     }
@@ -253,7 +299,7 @@ export class Character {
       return this.logger("SKIPPING STORE");
     }
 
-    await this.move(POINT_OF_INTEREST.bank.bank);
+    await this.got_to(POINT_OF_INTEREST.BANK);
 
     const data = await http_client
       .POST("/my/{name}/action/bank/deposit/item", {
@@ -266,14 +312,28 @@ export class Character {
     await this.wait(data);
   }
 
+  public async withdraw(item_code: string, quantity: number = 1) {
+    await this.got_to(POINT_OF_INTEREST.BANK);
+
+    const data = await http_client
+      .POST("/my/{name}/action/bank/withdraw/item", {
+        params: { path: { name: this.character } },
+        body: [{ code: item_code, quantity }],
+      })
+      .then((resp) => resp.data!.data);
+
+    this.set_info(data);
+    await this.wait(data, "WITHDRAW");
+  }
+
   public async farm_mob(
-    coordinates: Coordinates | number[],
+    monster: keyof typeof MONSTER,
     quantity: number = Infinity,
   ) {
     await this.equip("copper_dagger");
 
     for (let i = 0; i < quantity; i++) {
-      await this.move(coordinates);
+      await this.got_to(monster);
       await this.restore();
       await this.fight();
 
@@ -286,21 +346,37 @@ export class Character {
     await this.equip("copper_pickaxe");
 
     while ((await this.inventory("copper_bar")) < quantity + beginItem) {
-      await this.move(POINT_OF_INTEREST.resource.copper_rocks);
+      await this.got_to(POINT_OF_INTEREST.COPPER_ROCKS);
 
       while ((await this.inventory("copper_ore")) < 10) {
         await this.gathering();
       }
 
-      await this.move(POINT_OF_INTEREST.workshop.mining);
+      await this.got_to(POINT_OF_INTEREST.MINING);
       await this.craft("copper_bar");
 
       await this.check_inventory_capacity(10);
     }
   }
 
+  public async farm_coal(quantity: number = Infinity) {
+    for (let i = 0; i < quantity; i++) {
+      await this.got_to(POINT_OF_INTEREST.COAL_ROCKS);
+      await this.gathering();
+      await this.check_inventory_capacity(5);
+    }
+  }
+
+  public async farm_iron(quantity: number = Infinity) {
+    for (let i = 0; i < quantity; i++) {
+      await this.got_to(POINT_OF_INTEREST.IRON_ROCKS);
+      await this.gathering();
+      await this.check_inventory_capacity(5);
+    }
+  }
+
   public async farm_sunflower(quantity: number = Infinity) {
-    await this.move(POINT_OF_INTEREST.resource.sunflower_field);
+    await this.got_to(POINT_OF_INTEREST.SUNFLOWER_FIELD);
 
     for (let i = 0; i < quantity; i++) {
       await this.gathering();
@@ -308,8 +384,11 @@ export class Character {
     }
   }
 
-  public async farm_wood(quantity: number = Infinity) {
-    await this.move(POINT_OF_INTEREST.resource.ash_tree);
+  public async farm_wood(
+    wood: keyof typeof WOODS,
+    quantity: number = Infinity,
+  ) {
+    await this.got_to(wood);
     await this.equip("copper_axe");
 
     for (let i = 0; i < quantity; i++) {
@@ -319,11 +398,24 @@ export class Character {
     }
   }
 
+  public async farm_weapon() {
+    await this.store_all();
+    await this.withdraw("copper_bar", 6);
+    await this.got_to(POINT_OF_INTEREST.WEAPONCRAFTING);
+
+    for (let i = 0; i < 10; i++) {
+      await this.give_item("copper_bar", this, 6);
+      await this.craft("copper_dagger");
+      await this.rececycling("copper_dagger", 1);
+      await this.delete_item("copper_bar", 2);
+    }
+  }
+
   public async store(item_code: string, quantity: number = Infinity) {
     const quantity_inventory = await this.inventory(item_code);
     const quantity_to_give = Math.min(quantity_inventory, quantity);
 
-    await this.move(POINT_OF_INTEREST.bank.bank);
+    await this.got_to(POINT_OF_INTEREST.BANK);
 
     if (quantity_inventory <= 0) {
       return this.logger("NO ITEM TO STORE");

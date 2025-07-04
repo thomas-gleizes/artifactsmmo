@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/main.ts",
+    "dev1:": "pnpm dev",
     "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --outfile=dist/index.js",
     "compile": "pkg dist/index.js --targets node18-linux-arm64 --output dist/artifactsmmo_client",
     "package": "pnpm build && pnpm compile"
