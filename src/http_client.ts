@@ -1,8 +1,7 @@
 import createClient from "openapi-fetch";
 import { paths } from "./openapi";
 
-const token =
-  "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6InRob21hc2dsZWl6ZXMzNEBnbWFpbC5jb20iLCJwYXNzd29yZF9jaGFuZ2VkIjoiMjAyNS0wNy0wMlQxNzoxNzowMi4yNzRaIn0.upJhTObVmJNcglVsFs9a-4Zn9oucL0sH6u6YSuZlHig";
+const token = process.env.TOKEN;
 
 class Http_Error extends Error {
   constructor(public readonly response: Response) {

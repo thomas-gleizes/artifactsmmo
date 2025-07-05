@@ -419,7 +419,7 @@ export class Character {
 
       const capacity = await this.check_inventory_capacity();
 
-      if (capacity < 5) {
+      if (capacity < 20) {
         await this.got_to(POINT_OF_INTEREST.BANK);
         await this.store("iron_bar", Infinity);
       }

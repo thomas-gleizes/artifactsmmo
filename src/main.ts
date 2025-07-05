@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { Character, Characters } from "./lib/Character";
 import { Maps, POINT_OF_INTEREST } from "./lib/Maps";
 
@@ -10,6 +11,9 @@ async function main() {
   const yep = new Character(Characters.YEP, maps, "yellow");
   const pey = new Character(Characters.PEY, maps, "blue");
 
+  await kalat.move([0, 0]);
+
+  return;
   await Promise.all([
     kalat.farm_mob(POINT_OF_INTEREST.YELLOW_SLIME),
     latak.farm_mining(),

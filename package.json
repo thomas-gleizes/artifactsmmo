@@ -19,6 +19,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "dotenv": "^17.0.1",
     "esbuild": "^0.25.5",
     "openapi-fetch": "^0.14.0",
     "pkg": "^5.8.1",
