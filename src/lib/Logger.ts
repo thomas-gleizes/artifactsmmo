@@ -18,9 +18,7 @@ export class Logger {
   private log(level: string, ...args: any[]) {
     const timestamp = new Date().toISOString();
     const message = args.map(String).join(" ");
-    const logLine = `${timestamp} [${level.toUpperCase()}] (${
-      this.prefix
-    }) ${message}\n`;
+    const logLine = `${timestamp} [${level.toUpperCase()}]: (${this.prefix.toUpperCase()}) ${message}\n`;
 
     fs.promises
       .appendFile("app.log", logLine)
@@ -28,8 +26,8 @@ export class Logger {
 
     const colorCode = Logger.COLORS[this.color];
     console.log(
-      `${timestamp} [${level.toUpperCase()}] ${colorCode}(%s)\x1b[0m %s`,
-      this.prefix,
+      `${timestamp} [${level.toUpperCase()}]: ${colorCode}(%s)\x1b[0m %s`,
+      this.prefix.toUpperCase(),
       message,
     );
   }

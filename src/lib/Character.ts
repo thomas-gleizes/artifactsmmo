@@ -71,7 +71,7 @@ export class Character {
     data: T,
     action: string = "COOLDOWN",
   ) {
-    this.logger.info(action, `${data.cooldown.remaining_seconds} sec`);
+    this.logger.info(action, `${data.cooldown.remaining_seconds}sec`);
   }
 
   public async got_to(point_of_interest: POINT_OF_INTEREST) {
@@ -87,7 +87,7 @@ export class Character {
     const info = await this.get_info();
 
     if (info.x === x && info.y === y) {
-      return this.logger.info("ALREADY ON SITE");
+      return this.logger.warn(`ALREADY ON SITE (${x}, ${y})`);
     }
 
     const data = await http_client
@@ -111,9 +111,11 @@ export class Character {
     this.set_info(data);
     await this.wait(
       data,
-      `FIGHT (${data.fight.xp}xp) ${data.fight.result} - ${data.fight.drops
-        .map((item) => `${item.code} ${item.quantity}`)
-        .join(",")} - ${data.fight.turns} turns`,
+      `FIGHT (${data.fight.xp}xp) ${data.fight.result} - ${
+        data.fight.drops
+          .map((item) => `${item.code} x${item.quantity}`)
+          .join(", ") ?? "NO DROPS"
+      } ${data.fight.turns} TURNS`,
     );
   }
 
@@ -158,7 +160,7 @@ export class Character {
     this.set_info(data);
     await this.wait(
       data,
-      `CRAFT (${data.details.xp}) ${item_code} ${quantity}`,
+      `CRAFT (${data.details.xp}xp) ${item_code} x${quantity}`,
     );
   }
 
@@ -225,7 +227,7 @@ export class Character {
     const item_quantity = await this.inventory(itemCode);
 
     if (item_quantity <= 0) {
-      return this.logger.info(`DON'T HAVE ${itemCode} IN THIS INVENTORY`);
+      return this.logger.warn(`DON'T HAVE ${itemCode} IN THIS INVENTORY`);
     }
 
     const data = await http_client
@@ -326,7 +328,7 @@ export class Character {
       .map((item) => ({ code: item.code, quantity: item.quantity }));
 
     if (!items.length) {
-      return this.logger.info("SKIPPING STORE");
+      return this.logger.warn("SKIPPING STORE");
     }
 
     await this.got_to(POINT_OF_INTEREST.BANK);
@@ -339,7 +341,7 @@ export class Character {
       .then((resp) => resp.data!.data);
 
     this.set_info(data);
-    await this.wait(data);
+    await this.wait(data, "STORE ALL ITEMS");
   }
 
   public async withdraw(item_code: string, quantity: number = 1) {
@@ -353,7 +355,7 @@ export class Character {
       .then((resp) => resp.data!.data);
 
     this.set_info(data);
-    await this.wait(data, "WITHDRAW");
+    await this.wait(data, `WITHDRAW ${item_code} x${quantity}`);
   }
 
   public async farm_mob(
@@ -488,7 +490,7 @@ export class Character {
     await this.got_to(POINT_OF_INTEREST.BANK);
 
     if (quantity_inventory <= 0) {
-      return this.logger.info("NO ITEM TO STORE");
+      return this.logger.warn("NO ITEM TO STORE");
     }
 
     const data = await http_client
@@ -510,7 +512,7 @@ export class Character {
     const inventory_quantity = await this.inventory(item_code);
 
     if (inventory_quantity < 1) {
-      return this.logger.info(
+      return this.logger.warn(
         `CAN'T GIVE TO ${target.get_name()} BECAUSE DON'T HAVE ${item_code}`,
       );
     }
