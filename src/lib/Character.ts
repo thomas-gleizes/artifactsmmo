@@ -201,9 +201,25 @@ export class Character {
     return inventory.find((item) => item.code === itemCode)?.quantity ?? 0;
   }
 
+  public async unequip(
+    slot: components["schemas"]["ItemSlot"],
+    quantity: number = 1,
+  ) {
+    const data = await http_client
+      .POST("/my/{name}/action/unequip", {
+        params: { path: { name: this.character } },
+        body: { slot, quantity: 1 },
+      })
+      .then((resp) => resp.data!.data);
+
+    this.set_info(data);
+    await this.wait(data, `UNEQUIP ${slot} ${data.item.code} x${quantity}`);
+  }
+
   public async equip(
     itemCode: string,
     slot: components["schemas"]["ItemSlot"] = "weapon",
+    quantity: number = 1,
   ) {
     const item_quantity = await this.inventory(itemCode);
 
@@ -214,7 +230,7 @@ export class Character {
     const data = await http_client
       .POST("/my/{name}/action/equip", {
         params: { path: { name: this.character } },
-        body: { code: itemCode, slot, quantity: 1 },
+        body: { code: itemCode, slot, quantity },
       })
       .then((resp) => resp.data!.data);
 
@@ -222,22 +238,35 @@ export class Character {
     await this.wait(data, `EQUIP ${itemCode}`);
   }
 
-  public async check_inventory_capacity(marge: number = 5): Promise<number> {
+  public async check_inventory_capacity_and_store_when_full(
+    marge: number = 5,
+    rollback: boolean = true,
+  ): Promise<boolean> {
     const info = await this.get_info();
     const pose: Coordinates = [info.x, info.y];
 
+    const inventory_capacity = await this.check_inventory_capacity();
+
+    if (marge > inventory_capacity) {
+      await this.got_to(POINT_OF_INTEREST.BANK);
+      await this.store_all();
+
+      if (rollback) await this.move(pose);
+
+      return true;
+    }
+
+    return false;
+  }
+
+  public async check_inventory_capacity(): Promise<number> {
+    const info = await this.get_info();
     const total_items = info.inventory!.reduce(
       (total, item) => item.quantity + total,
       0,
     );
 
     this.logger(`INVENTORY ${total_items}/${info.inventory_max_items}`);
-
-    if (marge > info.inventory_max_items - total_items) {
-      await this.got_to(POINT_OF_INTEREST.BANK);
-      await this.store_all();
-      await this.move(pose);
-    }
 
     return info.inventory_max_items - total_items;
   }
@@ -330,14 +359,14 @@ export class Character {
     monster: keyof typeof MONSTER,
     quantity: number = Infinity,
   ) {
-    await this.equip("copper_dagger");
+    await this.equip("sticky_dagger");
 
     for (let i = 0; i < quantity; i++) {
       await this.got_to(monster);
       await this.restore();
       await this.fight();
 
-      await this.check_inventory_capacity(5);
+      await this.check_inventory_capacity_and_store_when_full(5, true);
     }
   }
 
@@ -355,7 +384,7 @@ export class Character {
       await this.got_to(POINT_OF_INTEREST.MINING);
       await this.craft("copper_bar");
 
-      await this.check_inventory_capacity(10);
+      await this.check_inventory_capacity_and_store_when_full(10);
     }
   }
 
@@ -363,7 +392,7 @@ export class Character {
     for (let i = 0; i < quantity; i++) {
       await this.got_to(POINT_OF_INTEREST.COAL_ROCKS);
       await this.gathering();
-      await this.check_inventory_capacity(5);
+      await this.check_inventory_capacity_and_store_when_full(5);
     }
   }
 
@@ -371,7 +400,26 @@ export class Character {
     for (let i = 0; i < quantity; i++) {
       await this.got_to(POINT_OF_INTEREST.IRON_ROCKS);
       await this.gathering();
-      await this.check_inventory_capacity(5);
+      await this.check_inventory_capacity_and_store_when_full(5);
+    }
+  }
+
+  public async farm_mining(quantity: number = Infinity) {
+    await this.got_to(POINT_OF_INTEREST.BANK);
+    await this.store_all();
+    await this.withdraw("iron_ore", 10);
+
+    for (let i = 0; i < quantity; i++) {
+      await this.give_item("iron_ore", this, 10);
+      await this.got_to(POINT_OF_INTEREST.MINING);
+      await this.craft("iron_bar", 1);
+
+      const capacity = await this.check_inventory_capacity();
+
+      if (capacity < 5) {
+        await this.got_to(POINT_OF_INTEREST.BANK);
+        await this.store("iron_bar", Infinity);
+      }
     }
   }
 
@@ -380,7 +428,7 @@ export class Character {
 
     for (let i = 0; i < quantity; i++) {
       await this.gathering();
-      await this.check_inventory_capacity(5);
+      await this.check_inventory_capacity_and_store_when_full(5);
     }
   }
 
@@ -394,16 +442,37 @@ export class Character {
     for (let i = 0; i < quantity; i++) {
       await this.gathering();
 
-      await this.check_inventory_capacity(5);
+      await this.check_inventory_capacity_and_store_when_full(5);
     }
   }
 
-  public async farm_weapon() {
+  public async farm_wood_cutting(
+    item: "spruce" | "ash",
+    quantity: number = Infinity,
+  ) {
+    await this.got_to(POINT_OF_INTEREST.BANK);
+    await this.store_all();
+    await this.withdraw(`${item}_wood`, 10);
+
+    for (let i = 0; i < quantity; i++) {
+      await this.got_to(POINT_OF_INTEREST.WOODCUTTING);
+      await this.give_item(`${item}_wood`, this, 10);
+      await this.craft(`${item}_plank`, 1);
+
+      const capacity = await this.check_inventory_capacity();
+      if (capacity < 5) {
+        await this.got_to(POINT_OF_INTEREST.BANK);
+        await this.store(`${item}_plank`, Infinity);
+      }
+    }
+  }
+
+  public async farm_weapon(quantity: number = Infinity) {
     await this.store_all();
     await this.withdraw("copper_bar", 6);
     await this.got_to(POINT_OF_INTEREST.WEAPONCRAFTING);
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < quantity; i++) {
       await this.give_item("copper_bar", this, 6);
       await this.craft("copper_dagger");
       await this.rececycling("copper_dagger", 1);
@@ -440,7 +509,7 @@ export class Character {
     const inventory_quantity = await this.inventory(item_code);
 
     if (inventory_quantity < 1) {
-      this.logger(
+      return this.logger(
         `CAN'T GIVE TO ${target.get_name()} BECAUSE DON'T HAVE ${item_code}`,
       );
     }

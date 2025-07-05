@@ -1,5 +1,5 @@
 import { Character, Characters } from "./lib/Character";
-import { Maps, POINT_OF_INTEREST, WOODS } from "./lib/Maps";
+import { Maps, POINT_OF_INTEREST } from "./lib/Maps";
 
 async function main() {
   const maps = await Maps.create();
@@ -10,17 +10,25 @@ async function main() {
   const yep = new Character(Characters.YEP, maps);
   const pey = new Character(Characters.PEY, maps);
 
-  // await kalat.got_to(POINT_OF_INTEREST.BANK);
-  // await kalat.withdraw("copper_bar", 10);
-  // await kalat.give_item("copper_bar", kalat, 10);
-  // await kalat.store("copper_bar", 10);
+  // latak.got_to(POINT_OF_INTEREST.MINING);
+
+  // await kalat.give_item("iron_bar", kalat, 10);
+  // await kalat.give_item("feather", kalat, 10);
+  // await kalat.give_item("feather", kalat, 10);
+
+  // await kalat.give_item("apprentice_gloves", yep, 1);
+
+  // await kalat.unequip("weapon");
+  // await kalat.equip("iron_sword", "weapon");
+
+  // await kalat.store_all();
 
   await Promise.all([
-    kalat.farm_weapon(),
-    latak.farm_iron(),
-    talak.farm_copper(),
+    kalat.farm_mob(POINT_OF_INTEREST.YELLOW_SLIME, 1),
+    latak.farm_mining(),
+    talak.farm_mining(),
+    pey.farm_wood_cutting("spruce"),
     yep.farm_sunflower(),
-    pey.farm_wood(WOODS.spruce_tree),
   ]);
 }
 
