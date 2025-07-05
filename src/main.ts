@@ -11,15 +11,12 @@ async function main() {
   const yep = new Character(Characters.YEP, maps, "yellow");
   const pey = new Character(Characters.PEY, maps, "blue");
 
-  await kalat.move([0, 0]);
-
-  return;
   await Promise.all([
-    kalat.farm_mob(POINT_OF_INTEREST.YELLOW_SLIME),
+    kalat.farm_weapon_crafting(),
     latak.farm_mining(),
-    talak.farm_mining(),
+    talak.farm_fishing(),
     pey.farm_wood_cutting("spruce"),
-    yep.farm_sunflower(),
+    yep.farm_alchemy(),
   ]);
 }
 

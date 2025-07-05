@@ -373,6 +373,35 @@ export class Character {
     }
   }
 
+  public async farm_fishing(quantity: number = Infinity) {
+    await this.equip("fishing_net");
+
+    for (let i = 0; i < quantity; i++) {
+      await this.got_to(POINT_OF_INTEREST.GUDGEON_FISHING_SPOT);
+      await this.gathering();
+      await this.check_inventory_capacity_and_store_when_full(5);
+    }
+  }
+
+  public async farm_alchemy(quantity: number = Infinity) {
+    await this.got_to(POINT_OF_INTEREST.BANK);
+    await this.store_all();
+    await this.withdraw("sunflower", 3);
+
+    for (let i = 0; i < quantity; i++) {
+      await this.got_to(POINT_OF_INTEREST.ALCHEMY);
+      await this.give_item("sunflower", this, 3);
+      await this.craft("small_health_potion", 1);
+
+      const capacity = await this.check_inventory_capacity();
+
+      if (capacity < 5) {
+        await this.got_to(POINT_OF_INTEREST.BANK);
+        await this.store("small_health_potion", Infinity);
+      }
+    }
+  }
+
   public async farm_copper(quantity: number = Infinity) {
     const beginItem = await this.inventory("copper_bar");
     await this.equip("copper_pickaxe");
@@ -470,16 +499,20 @@ export class Character {
     }
   }
 
-  public async farm_weapon(quantity: number = Infinity) {
+  public async farm_weapon_crafting(quantity: number = Infinity) {
     await this.store_all();
-    await this.withdraw("copper_bar", 6);
+    await this.withdraw("iron_bar", 8);
+    await this.withdraw("spruce_plank", 2);
+    await this.withdraw("jasper_crystal", 1);
     await this.got_to(POINT_OF_INTEREST.WEAPONCRAFTING);
 
     for (let i = 0; i < quantity; i++) {
-      await this.give_item("copper_bar", this, 6);
-      await this.craft("copper_dagger");
-      await this.rececycling("copper_dagger", 1);
-      await this.delete_item("copper_bar", 2);
+      await this.give_item("iron_bar", this, 8);
+      await this.give_item("spruce_plank", this, 2);
+      await this.give_item("jasper_crystal", this, 1);
+
+      await this.craft("iron_pickaxe");
+      await this.delete_item("iron_pickaxe", 1);
     }
   }
 
