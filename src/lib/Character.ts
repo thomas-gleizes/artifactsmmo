@@ -2,6 +2,7 @@ import { components } from "../openapi";
 import { http_client } from "../http_client";
 import { Coordinates } from "../types";
 import { Maps, MONSTER, POINT_OF_INTEREST, WOODS } from "./Maps";
+import { Logger } from "./Logger";
 
 export enum Characters {
   KALAT = "Kalat",
@@ -13,14 +14,14 @@ export enum Characters {
 
 export class Character {
   private info: components["schemas"]["CharacterSchema"] | undefined;
+  private logger: Logger;
 
   constructor(
     private readonly character: Characters,
     private readonly map: Maps,
-  ) {}
-
-  public logger(...args: any[]) {
-    console.log(this.character, ...args);
+    color: keyof typeof Logger.COLORS,
+  ) {
+    this.logger = new Logger(color, character);
   }
 
   set_info<T extends { character: components["schemas"]["CharacterSchema"] }>(
@@ -46,8 +47,8 @@ export class Character {
         new Date().getTime();
 
       if (cooldown > 0) {
-        console.log(
-          this.character + " WAIT CURRENT COOLDOWN : ",
+        this.logger.info(
+          "WAIT CURRENT COOLDOWN",
           `${Math.round(cooldown / 1000)} sec`,
         );
         await new Promise((r) => setTimeout(r, cooldown));
@@ -70,7 +71,7 @@ export class Character {
     data: T,
     action: string = "COOLDOWN",
   ) {
-    this.logger(action, `${data.cooldown.remaining_seconds} sec`);
+    this.logger.info(action, `${data.cooldown.remaining_seconds} sec`);
   }
 
   public async got_to(point_of_interest: POINT_OF_INTEREST) {
@@ -86,7 +87,7 @@ export class Character {
     const info = await this.get_info();
 
     if (info.x === x && info.y === y) {
-      return this.logger("ALREADY ON SITE");
+      return this.logger.info("ALREADY ON SITE");
     }
 
     const data = await http_client
@@ -224,7 +225,7 @@ export class Character {
     const item_quantity = await this.inventory(itemCode);
 
     if (item_quantity <= 0) {
-      return this.logger(`DON'T HAVE ${itemCode} IN THIS INVENTORY`);
+      return this.logger.info(`DON'T HAVE ${itemCode} IN THIS INVENTORY`);
     }
 
     const data = await http_client
@@ -266,7 +267,7 @@ export class Character {
       0,
     );
 
-    this.logger(`INVENTORY ${total_items}/${info.inventory_max_items}`);
+    this.logger.info(`INVENTORY ${total_items}/${info.inventory_max_items}`);
 
     return info.inventory_max_items - total_items;
   }
@@ -325,7 +326,7 @@ export class Character {
       .map((item) => ({ code: item.code, quantity: item.quantity }));
 
     if (!items.length) {
-      return this.logger("SKIPPING STORE");
+      return this.logger.info("SKIPPING STORE");
     }
 
     await this.got_to(POINT_OF_INTEREST.BANK);
@@ -487,7 +488,7 @@ export class Character {
     await this.got_to(POINT_OF_INTEREST.BANK);
 
     if (quantity_inventory <= 0) {
-      return this.logger("NO ITEM TO STORE");
+      return this.logger.info("NO ITEM TO STORE");
     }
 
     const data = await http_client
@@ -509,7 +510,7 @@ export class Character {
     const inventory_quantity = await this.inventory(item_code);
 
     if (inventory_quantity < 1) {
-      return this.logger(
+      return this.logger.info(
         `CAN'T GIVE TO ${target.get_name()} BECAUSE DON'T HAVE ${item_code}`,
       );
     }
